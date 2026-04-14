@@ -1,9 +1,12 @@
-const COUNTDOWN_ENABLED = false;
+const DEV_COUNTDOWN_ENABLED = false;
 
 (function () {
   "use strict";
 
   const COUNTDOWN_TARGET_UTC = Date.parse("2026-04-18T04:00:00Z");
+  const HOSTED_RELEASE_LOCK_ENABLED = true;
+  const RELEASE_LOCK_NOTE = "for you, soon";
+  const LOCAL_DEV_HOSTS = new Set(["localhost", "127.0.0.1", "::1", "[::1]"]);
   const INTRO_VISIBLE_MS = 2800;
   const INTRO_FADE_MS = 600;
   const INTRO_WAIT_STATUS_DELAY_MS = 3200;
@@ -45,6 +48,7 @@ const COUNTDOWN_ENABLED = false;
     textureBadge: document.getElementById("texture-badge"),
     countdownScreen: document.getElementById("countdown-screen"),
     countdownTime: document.getElementById("countdown-time"),
+    countdownNote: document.getElementById("countdown-note"),
     introScreen: document.getElementById("intro-screen"),
     introStatus: document.getElementById("intro-status"),
     nudibranchField: document.getElementById("nudibranch-field"),
@@ -91,19 +95,8 @@ const COUNTDOWN_ENABLED = false;
   document.addEventListener("DOMContentLoaded", init);
 
   function init() {
-    populateNudibranchs();
     bindUi();
-    createGlobeReadyGate();
-    renderModeOverviewState();
-    closeLeftDetail();
     startSequence();
-
-    try {
-      initializeScene();
-    } catch (error) {
-      console.error("Scene bootstrap failed", error);
-      handleSceneBootFailure();
-    }
   }
 
   function bindUi() {
@@ -122,43 +115,108 @@ const COUNTDOWN_ENABLED = false;
   }
 
   async function startSequence() {
-    if (COUNTDOWN_ENABLED) {
-      await runCountdown();
+    if (isHostedReleaseLocked(Date.now(), window.location)) {
+      await runCountdown({
+        note: RELEASE_LOCK_NOTE,
+        includeDays: true
+      });
+    } else if (DEV_COUNTDOWN_ENABLED && isLocalEnvironment(window.location)) {
+      await runCountdown({ includeDays: true });
     } else {
-      elements.countdownScreen.classList.add("screen-hidden");
+      hideCountdownScreen();
+    }
+
+    populateNudibranchs();
+    renderModeOverviewState();
+    closeLeftDetail();
+    createGlobeReadyGate();
+
+    try {
+      initializeScene();
+    } catch (error) {
+      console.error("Scene bootstrap failed", error);
+      handleSceneBootFailure();
     }
 
     await runIntro();
     revealApp();
   }
 
-  function runCountdown() {
+  function isLocalEnvironment(locationLike) {
+    if (!locationLike || typeof locationLike !== "object") {
+      return false;
+    }
+
+    if (locationLike.protocol === "file:") {
+      return true;
+    }
+
+    return LOCAL_DEV_HOSTS.has(String(locationLike.hostname || "").toLowerCase());
+  }
+
+  function isHostedReleaseLocked(nowMs, locationLike) {
+    return HOSTED_RELEASE_LOCK_ENABLED &&
+      !isLocalEnvironment(locationLike) &&
+      nowMs < COUNTDOWN_TARGET_UTC;
+  }
+
+  function runCountdown(options) {
+    const settings = Object.assign({
+      note: "",
+      includeDays: true
+    }, options);
     const screen = elements.countdownScreen;
 
-    screen.classList.remove("screen-hidden");
+    screen.classList.remove("screen-hidden", "is-exiting");
     screen.setAttribute("aria-hidden", "false");
+    setCountdownNote(settings.note);
 
     return new Promise((resolve) => {
       const tick = () => {
         const remaining = Math.max(0, COUNTDOWN_TARGET_UTC - Date.now());
-        renderCountdown(remaining);
+        renderCountdown(remaining, settings.includeDays);
 
         if (remaining <= 0) {
           screen.classList.add("is-exiting");
           window.setTimeout(() => {
-            screen.classList.add("screen-hidden");
-            screen.setAttribute("aria-hidden", "true");
+            hideCountdownScreen();
             resolve();
           }, INTRO_FADE_MS);
           return;
         }
 
-        window.setTimeout(tick, 200);
+        const nextTickDelay = remaining % 1000 || 1000;
+        window.setTimeout(tick, nextTickDelay);
       };
 
       tick();
     });
   }
+
+  function setCountdownNote(note) {
+    const value = typeof note === "string" ? note.trim() : "";
+
+    if (!elements.countdownNote) {
+      return;
+    }
+
+    elements.countdownNote.textContent = value;
+    elements.countdownNote.hidden = !value;
+    elements.countdownNote.classList.toggle("has-text", Boolean(value));
+  }
+
+  function hideCountdownScreen() {
+    elements.countdownScreen.classList.remove("is-exiting");
+    elements.countdownScreen.classList.add("screen-hidden");
+    elements.countdownScreen.setAttribute("aria-hidden", "true");
+    setCountdownNote("");
+  }
+
+  window.MaapviRuntime = Object.freeze({
+    isLocalEnvironment,
+    isHostedReleaseLocked,
+    releaseTargetUtc: COUNTDOWN_TARGET_UTC
+  });
 
   async function runIntro() {
     const waitingTimer = window.setTimeout(() => {
@@ -1951,19 +2009,23 @@ const COUNTDOWN_ENABLED = false;
     return segments[0] || "";
   }
 
-  function renderCountdown(remainingMs) {
+  function renderCountdown(remainingMs, includeDays) {
     const totalSeconds = Math.floor(remainingMs / 1000);
-    const hours = Math.floor(totalSeconds / 3600);
+    const days = Math.floor(totalSeconds / 86400);
+    const hours = Math.floor((totalSeconds % 86400) / 3600);
     const minutes = Math.floor((totalSeconds % 3600) / 60);
     const seconds = totalSeconds % 60;
+    const segments = [];
 
-    elements.countdownTime.innerHTML = [
-      `<span class="countdown-segment">${pad(hours)}h</span>`,
-      '<span class="countdown-separator">:</span>',
-      `<span class="countdown-segment">${pad(minutes)}m</span>`,
-      '<span class="countdown-separator">:</span>',
-      `<span class="countdown-segment">${pad(seconds)}s</span>`
-    ].join("");
+    if (includeDays) {
+      segments.push(`<span class="countdown-segment">${pad(days)}d</span>`);
+    }
+
+    segments.push(`<span class="countdown-segment">${pad(hours)}h</span>`);
+    segments.push(`<span class="countdown-segment">${pad(minutes)}m</span>`);
+    segments.push(`<span class="countdown-segment">${pad(seconds)}s</span>`);
+
+    elements.countdownTime.innerHTML = segments.join("");
   }
 
   function populateNudibranchs() {

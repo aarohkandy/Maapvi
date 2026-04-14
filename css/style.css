@@ -43,7 +43,10 @@ select {
   z-index: 30;
   display: grid;
   place-items: center;
-  background: #000;
+  background:
+    radial-gradient(circle at 50% 22%, rgba(124, 92, 191, 0.16), transparent 38%),
+    radial-gradient(circle at 50% 72%, rgba(124, 92, 191, 0.08), transparent 34%),
+    #000;
   transition: opacity 0.6s ease, visibility 0.6s ease;
 }
 
@@ -56,34 +59,51 @@ select {
 
 .countdown-wrap {
   display: grid;
-  gap: 18px;
+  gap: 16px;
   justify-items: center;
+  padding: 24px 32px;
 }
 
 .countdown-label {
-  color: rgba(245, 244, 240, 0.7);
+  color: rgba(165, 139, 214, 0.74);
   font-size: 12px;
-  letter-spacing: 0.26em;
+  letter-spacing: 0.28em;
   text-transform: uppercase;
 }
 
 .countdown-time {
   display: flex;
   align-items: center;
-  gap: 10px;
-  font-size: clamp(40px, 9vw, 84px);
+  justify-content: center;
+  flex-wrap: wrap;
+  gap: 14px;
+  font-size: clamp(34px, 6.5vw, 82px);
   font-weight: 200;
-  letter-spacing: -0.04em;
+  letter-spacing: -0.05em;
 }
 
 .countdown-segment {
-  color: var(--text);
+  color: var(--intro-purple);
+  text-shadow: 0 0 26px rgba(124, 92, 191, 0.12);
 }
 
 .countdown-separator {
-  color: var(--gold);
-  opacity: 0.85;
-  transform: translateY(-2px);
+  color: rgba(165, 139, 214, 0.46);
+}
+
+.countdown-note {
+  color: rgba(165, 139, 214, 0.7);
+  font-size: 12px;
+  letter-spacing: 0.22em;
+  text-transform: uppercase;
+  opacity: 0;
+  transform: translateY(6px);
+  transition: opacity 0.35s ease, transform 0.35s ease;
+}
+
+.countdown-note.has-text {
+  opacity: 1;
+  transform: translateY(0);
 }
 
 .nudibranch-field {
