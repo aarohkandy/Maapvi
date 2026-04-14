@@ -5,7 +5,6 @@ const DEV_COUNTDOWN_ENABLED = false;
 
   const COUNTDOWN_TARGET_UTC = Date.parse("2026-04-18T04:00:00Z");
   const HOSTED_RELEASE_LOCK_ENABLED = true;
-  const RELEASE_LOCK_NOTE = "for you, soon";
   const LOCAL_DEV_HOSTS = new Set(["localhost", "127.0.0.1", "::1", "[::1]"]);
   const INTRO_VISIBLE_MS = 2800;
   const INTRO_FADE_MS = 600;
@@ -47,8 +46,8 @@ const DEV_COUNTDOWN_ENABLED = false;
     spinner: document.getElementById("canvas-spinner"),
     textureBadge: document.getElementById("texture-badge"),
     countdownScreen: document.getElementById("countdown-screen"),
+    countdownNudibranchField: document.getElementById("countdown-nudibranch-field"),
     countdownTime: document.getElementById("countdown-time"),
-    countdownNote: document.getElementById("countdown-note"),
     introScreen: document.getElementById("intro-screen"),
     introStatus: document.getElementById("intro-status"),
     nudibranchField: document.getElementById("nudibranch-field"),
@@ -116,17 +115,16 @@ const DEV_COUNTDOWN_ENABLED = false;
 
   async function startSequence() {
     if (isHostedReleaseLocked(Date.now(), window.location)) {
-      await runCountdown({
-        note: RELEASE_LOCK_NOTE,
-        includeDays: true
-      });
+      populateNudibranchs(elements.countdownNudibranchField, { min: 5, max: 9 });
+      await runCountdown({ includeDays: true });
     } else if (DEV_COUNTDOWN_ENABLED && isLocalEnvironment(window.location)) {
+      populateNudibranchs(elements.countdownNudibranchField, { min: 5, max: 9 });
       await runCountdown({ includeDays: true });
     } else {
       hideCountdownScreen();
     }
 
-    populateNudibranchs();
+    populateNudibranchs(elements.nudibranchField, { min: 4, max: 8 });
     renderModeOverviewState();
     closeLeftDetail();
     createGlobeReadyGate();
@@ -162,14 +160,12 @@ const DEV_COUNTDOWN_ENABLED = false;
 
   function runCountdown(options) {
     const settings = Object.assign({
-      note: "",
       includeDays: true
     }, options);
     const screen = elements.countdownScreen;
 
     screen.classList.remove("screen-hidden", "is-exiting");
     screen.setAttribute("aria-hidden", "false");
-    setCountdownNote(settings.note);
 
     return new Promise((resolve) => {
       const tick = () => {
@@ -193,23 +189,10 @@ const DEV_COUNTDOWN_ENABLED = false;
     });
   }
 
-  function setCountdownNote(note) {
-    const value = typeof note === "string" ? note.trim() : "";
-
-    if (!elements.countdownNote) {
-      return;
-    }
-
-    elements.countdownNote.textContent = value;
-    elements.countdownNote.hidden = !value;
-    elements.countdownNote.classList.toggle("has-text", Boolean(value));
-  }
-
   function hideCountdownScreen() {
     elements.countdownScreen.classList.remove("is-exiting");
     elements.countdownScreen.classList.add("screen-hidden");
     elements.countdownScreen.setAttribute("aria-hidden", "true");
-    setCountdownNote("");
   }
 
   window.MaapviRuntime = Object.freeze({
@@ -2018,17 +2001,29 @@ const DEV_COUNTDOWN_ENABLED = false;
     const segments = [];
 
     if (includeDays) {
-      segments.push(`<span class="countdown-segment">${pad(days)}d</span>`);
+      segments.push(renderCountdownSegment(days, "d"));
     }
 
-    segments.push(`<span class="countdown-segment">${pad(hours)}h</span>`);
-    segments.push(`<span class="countdown-segment">${pad(minutes)}m</span>`);
-    segments.push(`<span class="countdown-segment">${pad(seconds)}s</span>`);
+    segments.push(renderCountdownSegment(hours, "h"));
+    segments.push(renderCountdownSegment(minutes, "m"));
+    segments.push(renderCountdownSegment(seconds, "s"));
 
     elements.countdownTime.innerHTML = segments.join("");
   }
 
-  function populateNudibranchs() {
+  function renderCountdownSegment(value, unit) {
+    return `<span class="countdown-segment"><span class="countdown-value">${pad(value)}</span><span class="countdown-unit">${unit}</span></span>`;
+  }
+
+  function populateNudibranchs(targetField, options) {
+    if (!targetField) {
+      return;
+    }
+
+    const settings = Object.assign({
+      min: 4,
+      max: 8
+    }, options);
     const shapes = getNudibranchSvgs();
     const placementPool = shuffle([
       { top: "5vh", left: "4vw", size: "212px", rotation: "-14deg" },
@@ -2041,20 +2036,25 @@ const DEV_COUNTDOWN_ENABLED = false;
       { bottom: "7vh", left: "5vw", size: "220px", rotation: "9deg" },
       { bottom: "6vh", right: "7vw", size: "206px", rotation: "-19deg" }
     ]);
-    const count = 4 + Math.floor(Math.random() * 5);
+    const spread = Math.max(1, settings.max - settings.min + 1);
+    const count = settings.min + Math.floor(Math.random() * spread);
     const placements = placementPool.slice(0, count);
 
-    elements.nudibranchField.innerHTML = placements.map(function (placement) {
+    targetField.innerHTML = placements.map(function (placement, index) {
       const shape = shapes[Math.floor(Math.random() * shapes.length)];
       const scale = (0.9 + Math.random() * 0.18).toFixed(2);
       const flip = Math.random() > 0.5 ? -1 : 1;
       const opacity = (0.38 + Math.random() * 0.18).toFixed(2);
       const stroke = (2.1 + Math.random() * 0.9).toFixed(2);
+      const duration = (6.4 + Math.random() * 3.2).toFixed(2);
+      const delay = ((index * 0.85) + Math.random() * 1.1).toFixed(2);
       const styleParts = [
         `--size:${placement.size}`,
         `--stroke:${stroke}`,
-        `transform: rotate(${placement.rotation}) scale(${scale}) scaleX(${flip})`,
-        `opacity:${opacity}`
+        `--nudibranch-transform: rotate(${placement.rotation}) scale(${scale}) scaleX(${flip})`,
+        `--nudibranch-opacity:${opacity}`,
+        `--nudibranch-duration:${duration}s`,
+        `--nudibranch-delay:-${delay}s`
       ];
 
       if (placement.top) styleParts.push(`top:${placement.top}`);
