@@ -1,0 +1,117 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Globe</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@200;300;400;500;600&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="css/style.css?v=20260413l">
+</head>
+<body>
+  <div id="countdown-screen" class="screen-overlay screen-hidden" aria-live="polite" aria-hidden="true">
+    <div class="countdown-wrap">
+      <div class="countdown-label">until april 18</div>
+      <div class="countdown-time" id="countdown-time">
+        <span class="countdown-segment">00h</span>
+        <span class="countdown-separator">:</span>
+        <span class="countdown-segment">00m</span>
+        <span class="countdown-separator">:</span>
+        <span class="countdown-segment">00s</span>
+      </div>
+    </div>
+  </div>
+
+  <div id="intro-screen" class="screen-overlay screen-hidden">
+    <div id="nudibranch-field" class="nudibranch-field" aria-hidden="true"></div>
+    <div class="intro-message">happy 17th!</div>
+    <div id="intro-status" class="intro-status">loading the world...</div>
+  </div>
+
+  <main id="app-shell" class="app-shell" aria-hidden="true">
+    <aside class="layer-selector" aria-label="Explore layers">
+      <div class="layer-selector-label">Explore</div>
+      <div class="layer-selector-list" role="list">
+        <button class="layer-selector-item is-active" type="button" aria-pressed="true" data-view="globe">Globe</button>
+        <button class="layer-selector-item" type="button" aria-pressed="false" data-view="panda">Panda Tracker</button>
+        <button class="layer-selector-item" type="button" aria-pressed="false" data-view="nudibranch">Nudibranchs</button>
+        <button class="layer-selector-item" type="button" aria-pressed="false" data-view="radar">Weather Radar</button>
+        <button class="layer-selector-item" type="button" aria-pressed="false" data-view="history">Weather History</button>
+      </div>
+    </aside>
+
+    <aside id="left-detail-panel" class="left-detail-panel" aria-live="polite" aria-label="Layer details">
+      <div id="left-detail-content" class="left-detail-content"></div>
+    </aside>
+
+    <section class="globe-shell" aria-label="Interactive globe">
+      <div id="globe-stage" class="globe-stage">
+        <div id="canvas-spinner" class="canvas-spinner" aria-hidden="true">
+          <span class="spinner-ring"></span>
+        </div>
+        <div id="globe-fallback" class="globe-fallback" aria-hidden="true"></div>
+        <div id="texture-badge" class="texture-badge">loading</div>
+      </div>
+    </section>
+
+    <aside id="info-panel" class="info-panel" aria-live="polite" aria-label="Location details">
+      <button id="panel-close" class="panel-close" type="button" aria-label="Close details">&times;</button>
+      <div class="panel-scroll">
+        <header class="panel-header">
+          <h1 id="place-name" class="place-name">Choose a place</h1>
+          <p id="coords-line" class="coords-line">Click the globe to begin wandering.</p>
+        </header>
+
+        <section id="biome-card" class="biome-card">
+          <div class="biome-title-row">
+            <div class="biome-title">Waiting for a horizon</div>
+          </div>
+          <div class="tag-row">
+            <span class="tag ghost-tag">landscape</span>
+            <span class="tag ghost-tag">soil</span>
+          </div>
+          <p class="biome-description">
+            Tap the world and this panel will sketch the climate, living things, and a little feeling for the place.
+          </p>
+        </section>
+
+        <section class="climate-section">
+          <div id="climate-row" class="climate-row">
+            <div class="climate-chip climate-chip-placeholder">temp unavailable</div>
+            <div class="climate-chip climate-chip-placeholder">precip unavailable</div>
+            <div class="climate-chip climate-chip-placeholder">wind unavailable</div>
+          </div>
+        </section>
+
+        <section class="animals-section">
+          <div class="section-label">local life</div>
+          <div id="animals-grid" class="animals-grid">
+            <article class="animal-card animal-card-placeholder">
+              <div class="animal-image animal-image-placeholder"></div>
+              <div class="animal-copy">
+                <div class="placeholder-line"></div>
+                <div class="placeholder-line short"></div>
+              </div>
+            </article>
+            <article class="animal-card animal-card-placeholder">
+              <div class="animal-image animal-image-placeholder"></div>
+              <div class="animal-copy">
+                <div class="placeholder-line"></div>
+                <div class="placeholder-line short"></div>
+              </div>
+            </article>
+          </div>
+        </section>
+      </div>
+    </aside>
+  </main>
+
+  <script src="js/three.r128.min.js?v=20260413l" defer></script>
+  <script src="js/OrbitControls.r128.js?v=20260413l" defer></script>
+  <script src="js/biomes.js?v=20260413l" defer></script>
+  <script src="js/pandas.js?v=20260413l" defer></script>
+  <script src="js/nudibranchs.js?v=20260413l" defer></script>
+  <script src="js/main.js?v=20260413l" defer></script>
+</body>
+</html>
