@@ -691,12 +691,9 @@ const DEV_COUNTDOWN_ENABLED = false;
       return;
     }
 
-    const point = state.earthMesh.worldToLocal(earthHits[0].point.clone());
-    const phi = Math.acos(Math.max(-1, Math.min(1, point.y / 2)));
-    const theta = Math.atan2(point.z, point.x);
-    const lat = 90 - (phi * 180 / Math.PI);
-    let lng = theta * 180 / Math.PI;
-    lng = ((lng + 180) % 360 + 360) % 360 - 180;
+    const coords = pointToLatLng(state.earthMesh.worldToLocal(earthHits[0].point.clone()), 2);
+    const lat = coords.lat;
+    const lng = coords.lng;
 
     if (state.viewMode === VIEW_MODES.globe) {
       selectGlobeLocation(lat, lng);
@@ -1470,6 +1467,7 @@ const DEV_COUNTDOWN_ENABLED = false;
   function getRadarPayload(lat, lng) {
     const key = getCacheKey(lat, lng);
     const cached = RADAR_CACHE.get(key);
+    const biome = getBiome(lat, lng);
 
     if (cached && cached.data) {
       return Promise.resolve(rehydrateCoords(cached.data, lat, lng));
@@ -1482,10 +1480,11 @@ const DEV_COUNTDOWN_ENABLED = false;
     }
 
     const promise = Promise.allSettled([
-      fetchPlace(lat, lng, getBiome(lat, lng)),
+      fetchPlace(lat, lng, biome),
       fetchRadarSnapshot(lat, lng)
     ]).then(function (results) {
-      const place = results[0].status === "fulfilled" ? results[0].value : createFallbackPlace(BIOME_PRESETS["open ocean"]);
+      const resolvedPlace = results[0].status === "fulfilled" ? results[0].value : createFallbackPlace(biome);
+      const place = resolveContextPlace(lat, lng, biome, resolvedPlace).place;
       const radar = results[1].status === "fulfilled" ? results[1].value : {
         imageUrl: "",
         capturedAt: "",
@@ -1510,6 +1509,7 @@ const DEV_COUNTDOWN_ENABLED = false;
   function getHistoryPayload(lat, lng) {
     const key = getCacheKey(lat, lng);
     const cached = HISTORY_CACHE.get(key);
+    const biome = getBiome(lat, lng);
 
     if (cached && cached.data) {
       return Promise.resolve(rehydrateCoords(cached.data, lat, lng));
@@ -1522,12 +1522,13 @@ const DEV_COUNTDOWN_ENABLED = false;
     }
 
     const promise = Promise.allSettled([
-      fetchPlace(lat, lng, getBiome(lat, lng)),
+      fetchPlace(lat, lng, biome),
       fetchWeatherHistory(lat, lng)
     ]).then(function (results) {
+      const resolvedPlace = results[0].status === "fulfilled" ? results[0].value : createFallbackPlace(biome);
       const payload = {
         coords: { lat: lat, lng: lng },
-        place: results[0].status === "fulfilled" ? results[0].value : createFallbackPlace(BIOME_PRESETS["open ocean"]),
+        place: resolveContextPlace(lat, lng, biome, resolvedPlace).place,
         history: results[1].status === "fulfilled"
           ? results[1].value
           : { days: [] }
@@ -1576,18 +1577,16 @@ const DEV_COUNTDOWN_ENABLED = false;
     const animals = results[2].status === "fulfilled"
       ? results[2].value
       : { available: false, items: [], emptyMessage: "" };
-    let finalBiome = resolveBiomeForPlace(biome, place);
-    const filteredAnimals = filterAnimalsForContext(animals, finalBiome, place);
-
-    if (place.title === "Unmapped Ground" && (!filteredAnimals.items || !filteredAnimals.items.length)) {
-      finalBiome = resolveFallbackWaterBiome(lat, lng, finalBiome);
-    }
+    const placeContext = resolveContextPlace(lat, lng, biome, place);
+    const finalPlace = placeContext.place;
+    const finalBiome = placeContext.biome;
+    const filteredAnimals = filterAnimalsForContext(animals, finalBiome, finalPlace);
 
     return {
       coords: { lat: lat, lng: lng },
       biome: finalBiome,
       sourceMode: state.textureMode,
-      place: place,
+      place: finalPlace,
       climate: climate,
       animals: filteredAnimals
     };
@@ -1847,6 +1846,32 @@ const DEV_COUNTDOWN_ENABLED = false;
     };
   }
 
+  function resolveContextPlace(lat, lng, biome, place) {
+    let finalPlace = place;
+    let finalBiome = resolveBiomeForPlace(biome, place);
+
+    if (place.title === "Unmapped Ground") {
+      finalBiome = resolveFallbackWaterBiome(lat, lng, finalBiome);
+
+      if (isWaterBiome(finalBiome)) {
+        finalPlace = Object.assign({}, place, {
+          title: buildPlaceTitle(place.locality, place.country, place.displayName, finalBiome, true),
+          waterHint: true,
+          coastalHint: finalBiome.biome === "coastal/reef"
+        });
+      }
+    }
+
+    return {
+      place: finalPlace,
+      biome: finalBiome
+    };
+  }
+
+  function isWaterBiome(biome) {
+    return Boolean(biome) && (biome.biome === "open ocean" || biome.biome === "coastal/reef");
+  }
+
   function resolveBiomeForPlace(biome, place) {
     if (!place || !place.waterHint) {
       return biome;
@@ -1860,20 +1885,19 @@ const DEV_COUNTDOWN_ENABLED = false;
   }
 
   function resolveFallbackWaterBiome(lat, lng, biome) {
+    const absLat = Math.abs(lat);
     const tropicalOcean =
-      Math.abs(lat) < 30 &&
+      absLat < 30 &&
       (
-        (lng > 45 && lng < 112) ||
-        (lng > 135 || lng < -105) ||
-        (lng > -70 && lng < -15)
+        (lng > 20 && lng < 120) ||
+        (lng > 120 || lng < -75) ||
+        (lng > -75 && lng < 20)
       );
-    const highLatitudeOcean = Math.abs(lat) > 38 && Math.abs(lat) < 72;
+    const temperateAtlantic = absLat >= 30 && absLat < 62 && lng > -70 && lng < 20;
+    const temperatePacific = absLat >= 30 && absLat < 62 && (lng > 125 || lng < -115);
+    const southernOcean = absLat >= 50 && absLat < 72;
 
-    if (tropicalOcean) {
-      return BIOME_PRESETS["open ocean"] || biome;
-    }
-
-    if (highLatitudeOcean && (Math.abs(lng) > 30 || lng < -40)) {
+    if (tropicalOcean || temperateAtlantic || temperatePacific || southernOcean) {
       return BIOME_PRESETS["open ocean"] || biome;
     }
 
@@ -1945,10 +1969,6 @@ const DEV_COUNTDOWN_ENABLED = false;
   }
 
   function buildPlaceTitle(locality, country, displayName, biome, waterHint) {
-    if (locality && country) {
-      return `${locality}, ${country}`;
-    }
-
     if (waterHint) {
       if (/atlantic/i.test(displayName)) return "Atlantic Waters";
       if (/pacific/i.test(displayName)) return "Pacific Waters";
@@ -1957,6 +1977,10 @@ const DEV_COUNTDOWN_ENABLED = false;
       if (/mediterranean/i.test(displayName)) return "Mediterranean Waters";
       if (/red sea/i.test(displayName)) return "Red Sea Waters";
       return "Remote Waters";
+    }
+
+    if (locality && country) {
+      return `${locality}, ${country}`;
     }
 
     return shortenDisplayName(displayName) || createFallbackPlace(biome).title;
@@ -2171,8 +2195,23 @@ const DEV_COUNTDOWN_ENABLED = false;
     return new THREE.Vector3(
       radius * sinPhi * Math.cos(theta),
       radius * Math.cos(phi),
-      radius * sinPhi * Math.sin(theta)
+      -radius * sinPhi * Math.sin(theta)
     );
+  }
+
+  function pointToLatLng(point, radius) {
+    const safeRadius = radius || 2;
+    const phi = Math.acos(Math.max(-1, Math.min(1, point.y / safeRadius)));
+    const theta = Math.atan2(-point.z, point.x);
+
+    return {
+      lat: 90 - (phi * 180 / Math.PI),
+      lng: normalizeLng(theta * 180 / Math.PI)
+    };
+  }
+
+  function normalizeLng(lng) {
+    return ((lng + 180) % 360 + 360) % 360 - 180;
   }
 
   function getArrayValue(values, index) {
