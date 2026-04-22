@@ -970,6 +970,10 @@ select {
 }
 
 @media (max-width: 767px) {
+  :root {
+    --shadow-soft: 0 16px 42px rgba(0, 0, 0, 0.22);
+  }
+
   .countdown-wrap {
     width: min(520px, calc(100vw - 28px));
     padding: 18px 8px;
@@ -986,40 +990,90 @@ select {
 
   body {
     overflow: auto;
+    overscroll-behavior-y: contain;
+  }
+
+  .app-shell {
+    min-height: 100svh;
+    padding-top: 10px;
   }
 
   .layer-selector {
-    position: relative;
+    position: sticky;
     left: auto;
-    top: auto;
+    top: 0;
+    z-index: 18;
     width: auto;
-    margin: 14px 18px 0;
+    margin: 0 12px 8px;
+    padding: 10px;
+    border-radius: 18px;
+    background: rgba(10, 8, 20, 0.88);
+  }
+
+  .layer-selector-label {
+    margin-bottom: 8px;
+    padding-left: 2px;
+    font-size: 10px;
+    letter-spacing: 0.2em;
   }
 
   .layer-selector-list {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
+    display: flex;
+    gap: 8px;
+    overflow-x: auto;
+    padding-bottom: 1px;
+    scroll-padding-inline: 2px;
+    scroll-snap-type: x proximity;
+    scrollbar-width: none;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  .layer-selector-list::-webkit-scrollbar {
+    display: none;
+  }
+
+  .layer-selector-item {
+    flex: 0 0 auto;
+    min-width: 112px;
+    min-height: 38px;
+    padding: 9px 12px;
+    font-size: 12px;
+    white-space: nowrap;
+    scroll-snap-align: start;
+  }
+
+  .layer-selector-item:hover {
+    transform: none;
   }
 
   .left-detail-panel {
+    display: none;
     position: relative;
     left: auto;
     top: auto;
     width: auto;
     max-width: none;
     max-height: none;
-    margin: 0 18px 18px;
+    margin: 0 12px 10px;
+    border-radius: 18px;
+  }
+
+  .left-detail-panel.is-open {
+    display: block;
   }
 
   .left-detail-content {
     max-height: none;
+    padding: 14px;
   }
 
   .globe-shell {
-    min-height: 72vh;
+    min-height: auto;
   }
 
   .globe-stage {
-    height: min(72vh, 620px);
+    height: clamp(430px, calc(100svh - 108px), 620px);
+    min-height: 430px;
   }
 
   .info-panel {
@@ -1031,7 +1085,8 @@ select {
     max-width: none;
     margin: 0;
     border-left: 0;
-    border-top: 1px solid var(--gold-soft);
+    border: 1px solid rgba(201, 168, 76, 0.12);
+    border-radius: 22px 22px 0 0;
     box-shadow: none;
     transform: none;
     opacity: 0;
@@ -1040,13 +1095,99 @@ select {
   }
 
   .info-panel.is-open {
-    margin: 0 18px 24px;
+    margin: 0 12px 24px;
     opacity: 1;
     max-height: none;
     pointer-events: auto;
   }
 
   .panel-close {
-    margin-right: 16px;
+    margin: 14px 16px 0 0;
+    font-size: 28px;
+  }
+
+  .panel-scroll {
+    padding: 8px 16px 24px;
+  }
+
+  .place-name {
+    font-size: clamp(30px, 12vw, 46px);
+  }
+
+  .coords-line {
+    font-size: 12px;
+    line-height: 1.55;
+  }
+
+  .biome-card,
+  .panda-card {
+    padding: 14px;
+  }
+
+  .climate-row {
+    gap: 8px;
+  }
+
+  .climate-chip {
+    min-height: 78px;
+    padding: 10px;
+    gap: 10px;
+  }
+
+  .climate-label {
+    font-size: 10px;
+  }
+
+  .climate-value {
+    font-size: clamp(14px, 4vw, 16px);
+    line-height: 1.2;
+    overflow-wrap: normal;
+  }
+
+  .animals-grid {
+    gap: 10px;
+  }
+
+  .animal-card {
+    min-height: 196px;
+  }
+
+  .weather-day-card {
+    grid-template-columns: 76px 1fr;
+  }
+
+  .weather-day-values {
+    grid-template-columns: 1fr;
+    gap: 5px;
+  }
+}
+
+@media (max-width: 420px) {
+  .layer-selector-item {
+    min-width: 106px;
+  }
+
+  .globe-stage {
+    height: clamp(420px, calc(100svh - 104px), 560px);
+    min-height: 420px;
+  }
+
+  .climate-row {
+    grid-template-columns: 1fr;
+  }
+
+  .climate-chip {
+    min-height: 58px;
+    grid-template-columns: minmax(72px, auto) 1fr;
+    align-items: center;
+    align-content: center;
+  }
+
+  .climate-chip-top {
+    min-width: 0;
+  }
+
+  .animals-grid {
+    grid-template-columns: 1fr;
   }
 }

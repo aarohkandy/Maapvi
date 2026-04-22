@@ -18,6 +18,7 @@ const DEV_COUNTDOWN_ENABLED = false;
   const STATIC_TEXTURE_URL = "https://assets.science.nasa.gov/content/dam/science/esd/eo/images/bmng/bmng-base/april/world.200404.3x5400x2700.jpg";
   const LIVE_TEXTURE_URL = buildLiveTextureUrl();
   const RADAR_SOURCE_URL = "https://api.rainviewer.com/public/weather-maps.json";
+  const MOBILE_LAYOUT_QUERY = "(max-width: 767px)";
   const VIEW_MODES = {
     globe: "globe",
     panda: "panda",
@@ -54,6 +55,7 @@ const DEV_COUNTDOWN_ENABLED = false;
     panel: document.getElementById("info-panel"),
     panelScroll: document.querySelector(".panel-scroll"),
     closeButton: document.getElementById("panel-close"),
+    layerSelector: document.querySelector(".layer-selector"),
     layerButtons: Array.from(document.querySelectorAll(".layer-selector-item")),
     leftDetailPanel: document.getElementById("left-detail-panel"),
     leftDetailContent: document.getElementById("left-detail-content")
@@ -716,6 +718,7 @@ const DEV_COUNTDOWN_ENABLED = false;
     closeLeftDetail();
     placeClickMarker(lat, lng, "globe");
     openPanel();
+    scrollPanelIntoViewOnMobile();
     renderGlobeLoadingState(lat, lng, biome);
 
     getGlobePayload(lat, lng, biome)
@@ -744,6 +747,7 @@ const DEV_COUNTDOWN_ENABLED = false;
     updatePandaMarkerSelection(location.id);
     updateNudibranchMarkerSelection("");
     openPanel();
+    scrollPanelIntoViewOnMobile();
     renderPandaLocation(location);
   }
 
@@ -757,6 +761,7 @@ const DEV_COUNTDOWN_ENABLED = false;
     updatePandaMarkerSelection("");
     updateNudibranchMarkerSelection(region.id);
     openPanel();
+    scrollPanelIntoViewOnMobile();
     renderNudibranchRegionPanel(region);
     renderNudibranchSpeciesList(region, [], true);
 
@@ -780,6 +785,7 @@ const DEV_COUNTDOWN_ENABLED = false;
     closeLeftDetail();
     placeClickMarker(lat, lng, "radar");
     openPanel();
+    scrollPanelIntoViewOnMobile();
     renderRadarLoadingState(lat, lng);
 
     getRadarPayload(lat, lng)
@@ -804,6 +810,7 @@ const DEV_COUNTDOWN_ENABLED = false;
     closeLeftDetail();
     placeClickMarker(lat, lng, "history");
     openPanel();
+    scrollPanelIntoViewOnMobile();
     renderHistoryLoadingState(lat, lng);
 
     getHistoryPayload(lat, lng)
@@ -974,6 +981,26 @@ const DEV_COUNTDOWN_ENABLED = false;
   function openPanel() {
     elements.panel.classList.add("is-open");
     requestRender();
+  }
+
+  function scrollPanelIntoViewOnMobile() {
+    if (!isMobileLayout()) {
+      return;
+    }
+
+    window.requestAnimationFrame(function () {
+      const selectorBottom = elements.layerSelector
+        ? elements.layerSelector.getBoundingClientRect().bottom
+        : 0;
+      const panelTop = window.scrollY + elements.panel.getBoundingClientRect().top;
+      const targetTop = Math.max(0, panelTop - selectorBottom - 12);
+
+      window.scrollTo({ top: targetTop, behavior: "smooth" });
+    });
+  }
+
+  function isMobileLayout() {
+    return window.matchMedia(MOBILE_LAYOUT_QUERY).matches;
   }
 
   function closePanel() {
@@ -1673,9 +1700,9 @@ const DEV_COUNTDOWN_ENABLED = false;
     return {
       available: true,
       temperatureText: Number.isFinite(tempMin) && Number.isFinite(tempMax)
-        ? `${Math.round(tempMin)}-${Math.round(tempMax)} deg C`
+        ? formatFahrenheitRange(tempMin, tempMax)
         : Number.isFinite(current.temperature)
-          ? `${Math.round(current.temperature)} deg C`
+          ? formatFahrenheit(current.temperature)
           : "",
       precipitationText: Number.isFinite(precipitation) ? `${precipitation.toFixed(1)} mm` : "",
       windText: Number.isFinite(current.windspeed) ? `${Math.round(current.windspeed)} km/h` : ""
@@ -1781,7 +1808,7 @@ const DEV_COUNTDOWN_ENABLED = false;
         return {
           label: formatHistoryLabel(date),
           temp: Number.isFinite(tempMin) && Number.isFinite(tempMax)
-            ? `${Math.round(tempMin)}-${Math.round(tempMax)} deg C`
+            ? formatFahrenheitRange(tempMin, tempMax)
             : "n/a",
           precip: Number.isFinite(precip) ? `${precip.toFixed(1)} mm` : "n/a",
           wind: Number.isFinite(wind) ? `${Math.round(wind)} km/h` : "n/a"
@@ -2216,6 +2243,18 @@ const DEV_COUNTDOWN_ENABLED = false;
 
   function getArrayValue(values, index) {
     return Array.isArray(values) ? Number(values[index]) : NaN;
+  }
+
+  function celsiusToFahrenheit(value) {
+    return (value * 9 / 5) + 32;
+  }
+
+  function formatFahrenheit(value) {
+    return `${Math.round(celsiusToFahrenheit(value))}\u00b0F`;
+  }
+
+  function formatFahrenheitRange(min, max) {
+    return `${Math.round(celsiusToFahrenheit(min))}-${Math.round(celsiusToFahrenheit(max))}\u00b0F`;
   }
 
   function getCacheKey(lat, lng) {
